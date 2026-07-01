@@ -1,0 +1,6 @@
+{
+  "name": "AstraAQI",
+  "description": "Satellite-Based Air Quality Intelligence Platform for India. Real-time environmental monitoring powered by ISRO INSAT-3D, Sentinel-5P, and MODIS satellite data with AI-powered forecasting.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
