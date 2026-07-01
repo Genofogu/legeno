@@ -1,12 +1,13 @@
 export enum Page {
   Dashboard = "Dashboard",
-  IndiaMap = "India AQI",
+  IndiaMap = "India AQI Map",
   HchoHotspots = "HCHO Hotspots",
   SatelliteLayers = "Satellite Layers",
   FireDetection = "Fire Detection",
   Forecast = "Forecast",
   Analytics = "Analytics",
   Reports = "Reports",
+  Alerts = "Alerts",
   Settings = "Settings"
 }
 

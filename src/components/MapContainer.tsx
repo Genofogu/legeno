@@ -444,6 +444,30 @@ export default function MapContainer({
 }: MapContainerProps) {
   // Layer & view controls
   const [activeLayer, setActiveLayer] = useState<string>(initialActiveLayer || "AQI");
+  const [baseMap, setBaseMap] = useState<"Satellite" | "Terrain" | "Hybrid">("Hybrid");
+  const [expandedCategory, setExpandedCategory] = useState<string | null>("Air Quality");
+  const [animationSpeed, setAnimationSpeed] = useState<number>(1);
+  const [layerOpacity, setLayerOpacity] = useState<Record<string, number>>({
+    Sat: 100,
+    AQI: 60,
+    "PM2.5": 58,
+    NO2: 65,
+    SO2: 60,
+    CO: 58,
+    O3: 62,
+    HCHO: 55,
+    Fires: 80,
+    Smoke: 42,
+    Wind: 75,
+    Temp: 45,
+    Rain: 58,
+    Humidity: 55,
+    Pressure: 85,
+    Clouds: 52,
+    AirMass: 90,
+    Forecast: 45,
+    HCHOPrediction: 52
+  });
   const [showBoundaries, setShowBoundaries] = useState(true);
   const [dayMode, setDayMode] = useState(true); // true: Normal RGB Satellite (Default), false: Soft Enhanced Satellite
   const [is3D, setIs3D] = useState(false); // Perspective Tilt Toggle
@@ -474,6 +498,8 @@ export default function MapContainer({
   const mapRef = useRef<L.Map | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const geoJsonLayerRef = useRef<L.GeoJSON | null>(null);
+  const baseMapLayerRef = useRef<L.TileLayer | null>(null);
+  const labelsLayerRef = useRef<L.TileLayer | null>(null);
 
   // State boundary GeoJSON loaded dynamically
   const [geoJsonData, setGeoJsonData] = useState<any>(null);
@@ -532,7 +558,7 @@ export default function MapContainer({
 
     // Layer 2: AQI Heatmap (id: "AQI")
     if (activeLayer === "AQI") {
-      ctx.globalAlpha = 0.42; 
+      ctx.globalAlpha = (layerOpacity["AQI"] !== undefined ? layerOpacity["AQI"] : 60) / 100; 
       ctx.globalCompositeOperation = "screen";
 
       const points: { lat: number; lng: number; val: number }[] = [];
@@ -594,7 +620,7 @@ export default function MapContainer({
 
     // Layer 3: PM2.5 (id: "PM2.5")
     if (activeLayer === "PM2.5") {
-      ctx.globalAlpha = 0.45;
+      ctx.globalAlpha = (layerOpacity["PM2.5"] !== undefined ? layerOpacity["PM2.5"] : 58) / 100;
       ctx.globalCompositeOperation = "screen";
 
       const points: { lat: number; lng: number; val: number }[] = [];
@@ -652,7 +678,7 @@ export default function MapContainer({
 
     // Layer 4: NO₂ Column Density (id: "NO2")
     if (activeLayer === "NO2") {
-      ctx.globalAlpha = 0.45;
+      ctx.globalAlpha = (layerOpacity["NO2"] !== undefined ? layerOpacity["NO2"] : 65) / 100;
       ctx.globalCompositeOperation = "screen";
 
       // 1. Plot core emissions at centroids and cities
@@ -720,7 +746,7 @@ export default function MapContainer({
 
     // Layer 5: SO₂ Plume Map (id: "SO2")
     if (activeLayer === "SO2") {
-      ctx.globalAlpha = 0.52;
+      ctx.globalAlpha = (layerOpacity["SO2"] !== undefined ? layerOpacity["SO2"] : 60) / 100;
       ctx.globalCompositeOperation = "screen";
 
       // Sulfur Dioxide coal powerplant hubs + volcano plume
@@ -762,7 +788,7 @@ export default function MapContainer({
 
     // Layer 6: CO Dispersion (id: "CO")
     if (activeLayer === "CO") {
-      ctx.globalAlpha = 0.38;
+      ctx.globalAlpha = (layerOpacity["CO"] !== undefined ? layerOpacity["CO"] : 58) / 100;
       ctx.globalCompositeOperation = "screen";
 
       const time = Date.now() / 1500;
@@ -793,7 +819,7 @@ export default function MapContainer({
 
     // Layer 7: Ozone Layer (id: "O3")
     if (activeLayer === "O3") {
-      ctx.globalAlpha = 0.40;
+      ctx.globalAlpha = (layerOpacity["O3"] !== undefined ? layerOpacity["O3"] : 62) / 100;
       ctx.globalCompositeOperation = "screen";
 
       const time = Date.now() / 3200;
@@ -823,7 +849,7 @@ export default function MapContainer({
 
     // Layer 8: HCHO Formaldehyde (id: "HCHO")
     if (activeLayer === "HCHO") {
-      ctx.globalAlpha = 0.50;
+      ctx.globalAlpha = (layerOpacity["HCHO"] !== undefined ? layerOpacity["HCHO"] : 55) / 100;
       ctx.globalCompositeOperation = "screen";
 
       const fires = [
@@ -854,7 +880,7 @@ export default function MapContainer({
 
     // Layer 9: Thermal Fires - NASA FIRMS style (id: "Fires")
     if (activeLayer === "Fires") {
-      ctx.globalAlpha = 1.0;
+      ctx.globalAlpha = (layerOpacity["Fires"] !== undefined ? layerOpacity["Fires"] : 80) / 100;
       ctx.globalCompositeOperation = "source-over";
 
       const timeSec = Date.now() / 200;
@@ -896,7 +922,7 @@ export default function MapContainer({
 
     // Layer 10: Wind Particles & Streamlines (id: "Wind")
     if (activeLayer === "Wind") {
-      ctx.globalAlpha = 0.88;
+      ctx.globalAlpha = (layerOpacity["Wind"] !== undefined ? layerOpacity["Wind"] : 75) / 100;
       ctx.globalCompositeOperation = "source-over";
       ctx.fillStyle = "#38bdf8";
 
@@ -953,7 +979,7 @@ export default function MapContainer({
 
     // Layer 11: Temperature Map Raster (id: "Temp")
     if (activeLayer === "Temp") {
-      ctx.globalAlpha = 0.54; // Keep satellite terrain, coastlines and topography visible underneath
+      ctx.globalAlpha = (layerOpacity["Temp"] !== undefined ? layerOpacity["Temp"] : 45) / 100; // Keep satellite terrain, coastlines and topography visible underneath
       ctx.globalCompositeOperation = "source-over";
 
       const mapWidth = canvas.width;
@@ -1055,13 +1081,13 @@ export default function MapContainer({
 
     // Layer 12: Weather Radar & Precipitation (id: "Rain")
     if (activeLayer === "Rain") {
-      ctx.globalAlpha = 0.58;
+      ctx.globalAlpha = (layerOpacity["Rain"] !== undefined ? layerOpacity["Rain"] : 58) / 100;
       ctx.globalCompositeOperation = "screen";
 
       const centerX = canvas.width / 2;
       const centerY = canvas.height / 2;
       const radarRadius = Math.max(canvas.width, canvas.height) * 0.8;
-      const sweepAngle = (Date.now() / 2400) % (Math.PI * 2);
+      const sweepAngle = (Date.now() / 2400 * animationSpeed) % (Math.PI * 2);
 
       ctx.strokeStyle = "rgba(16, 185, 129, 0.08)";
       ctx.lineWidth = 1;
@@ -1078,8 +1104,8 @@ export default function MapContainer({
 
       monsoonCells.forEach((cell, i) => {
         try {
-          const driftX = Math.sin(Date.now() / 6000 + i) * 15;
-          const driftY = (Date.now() / 3000 + i * 50) % 40 - 20;
+          const driftX = Math.sin(Date.now() / 6000 * animationSpeed + i) * 15;
+          const driftY = (Date.now() / 3000 * animationSpeed + i * 50) % 40 - 20;
 
           const pos = map.latLngToContainerPoint(L.latLng(cell.lat, cell.lng));
           const adjustedX = pos.x + driftX;
@@ -1114,7 +1140,7 @@ export default function MapContainer({
 
     // Layer 13: Humidity Raster (id: "Humidity")
     if (activeLayer === "Humidity") {
-      ctx.globalAlpha = 0.55;
+      ctx.globalAlpha = (layerOpacity["Humidity"] !== undefined ? layerOpacity["Humidity"] : 55) / 100;
       ctx.globalCompositeOperation = "screen";
 
       statesData.forEach(state => {
@@ -1147,7 +1173,7 @@ export default function MapContainer({
 
     // Layer 14: Barometric Pressure Isobars (id: "Pressure")
     if (activeLayer === "Pressure") {
-      ctx.globalAlpha = 0.85;
+      ctx.globalAlpha = (layerOpacity["Pressure"] !== undefined ? layerOpacity["Pressure"] : 85) / 100;
       ctx.globalCompositeOperation = "source-over";
 
       const centerCoords = { lat: 21.1458, lng: 79.0882 };
@@ -1193,7 +1219,7 @@ export default function MapContainer({
 
     // Layer 15: Satellite Cloud Cover (id: "Clouds")
     if (activeLayer === "Clouds") {
-      ctx.globalAlpha = 0.52;
+      ctx.globalAlpha = (layerOpacity["Clouds"] !== undefined ? layerOpacity["Clouds"] : 52) / 100;
       ctx.globalCompositeOperation = "source-over";
 
       const time = Date.now() / 12000;
@@ -1232,7 +1258,7 @@ export default function MapContainer({
 
     // Layer 16: Air Mass Trajectory (id: "AirMass")
     if (activeLayer === "AirMass") {
-      ctx.globalAlpha = 0.90;
+      ctx.globalAlpha = (layerOpacity["AirMass"] !== undefined ? layerOpacity["AirMass"] : 90) / 100;
       ctx.globalCompositeOperation = "source-over";
 
       const hubs = [
@@ -1273,7 +1299,7 @@ export default function MapContainer({
 
     // Layer 17: Timeline Forecast Predictions (id: "Forecast")
     if (activeLayer === "Forecast") {
-      ctx.globalAlpha = 0.45;
+      ctx.globalAlpha = (layerOpacity["Forecast"] !== undefined ? layerOpacity["Forecast"] : 45) / 100;
       ctx.globalCompositeOperation = "screen";
 
       const sources = [
@@ -1314,6 +1340,98 @@ export default function MapContainer({
           ctx.arc(arrowX, arrowY, 3, 0, Math.PI * 2);
           ctx.fill();
 
+        } catch (e) {}
+      });
+    }
+
+    // Layer: Smoke Plumes (id: "Smoke")
+    if (activeLayer === "Smoke") {
+      ctx.globalAlpha = (layerOpacity["Smoke"] !== undefined ? layerOpacity["Smoke"] : 42) / 100;
+      ctx.globalCompositeOperation = "screen";
+
+      const time = Date.now() / 2500 * animationSpeed;
+      // Emit smoke from active fires
+      fireEvents.forEach((fire, i) => {
+        try {
+          const origin = map.latLngToContainerPoint(L.latLng(fire.lat, fire.lng));
+          // Drift to Southeast
+          const driftAngle = Math.PI / 4 + Math.sin(time + i) * 0.1; 
+          const plumeLength = 120 * Math.pow(1.15, zoom - 5);
+
+          // Draw trailing smoke puffs
+          for (let puff = 1; puff <= 3; puff++) {
+            const dist = puff * (plumeLength * 0.33);
+            const px = origin.x + Math.cos(driftAngle) * dist;
+            const py = origin.y + Math.sin(driftAngle) * dist;
+            const size = (20 + puff * 15) * Math.pow(1.15, zoom - 5);
+
+            const grad = ctx.createRadialGradient(px, py, 1, px, py, size);
+            grad.addColorStop(0, "rgba(226, 232, 240, 0.28)"); // soft slate/white smoke
+            grad.addColorStop(0.4, "rgba(148, 163, 184, 0.08)");
+            grad.addColorStop(1, "rgba(0, 0, 0, 0)");
+
+            ctx.fillStyle = grad;
+            ctx.beginPath();
+            ctx.arc(px, py, size, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        } catch (e) {}
+      });
+    }
+
+    // Layer: AI HCHO Predictions (id: "HCHOPrediction")
+    if (activeLayer === "HCHOPrediction") {
+      ctx.globalAlpha = (layerOpacity["HCHOPrediction"] !== undefined ? layerOpacity["HCHOPrediction"] : 52) / 100;
+      ctx.globalCompositeOperation = "screen";
+
+      const points = [
+        { lat: 31.2, lng: 75.3, radius: 180, growth: 1.15, danger: "High risk crop burning smoke" },
+        { lat: 28.6, lng: 77.2, radius: 240, growth: 1.35, danger: "Severe chemical smog accumulation" },
+        { lat: 22.4, lng: 88.4, radius: 160, growth: 0.95, danger: "Industrial plume drift" },
+        { lat: 13.0, lng: 80.2, radius: 140, growth: 1.10, danger: "Urban chemical heat dome" }
+      ];
+
+      const pulse = 1 + 0.12 * Math.sin(Date.now() / 1500 * animationSpeed);
+
+      points.forEach((pt, i) => {
+        try {
+          const pos = map.latLngToContainerPoint(L.latLng(pt.lat, pt.lng));
+          const r = pt.radius * pt.growth * pulse * Math.pow(1.15, zoom - 5);
+
+          // Multi-layer prediction rings (AI dashboard style)
+          const grad = ctx.createRadialGradient(pos.x, pos.y, r * 0.05, pos.x, pos.y, r);
+          grad.addColorStop(0, "rgba(236, 72, 153, 0.42)"); // pink-magenta core
+          grad.addColorStop(0.5, "rgba(168, 85, 247, 0.15)"); // violet-purple boundary
+          grad.addColorStop(1, "rgba(0, 0, 0, 0)");
+
+          ctx.fillStyle = grad;
+          ctx.beginPath();
+          ctx.arc(pos.x, pos.y, r, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Dotted outer boundary line
+          ctx.strokeStyle = "rgba(236, 72, 153, 0.35)";
+          ctx.lineWidth = 1.0;
+          ctx.setLineDash([4, 4]);
+          ctx.beginPath();
+          ctx.arc(pos.x, pos.y, r * 0.8, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.setLineDash([]);
+
+          // AI label anchor
+          if (zoom >= 6) {
+            ctx.fillStyle = "rgba(236, 72, 153, 0.85)";
+            ctx.font = "bold 9px monospace";
+            ctx.textAlign = "left";
+            ctx.fillText(`🤖 AI Prediction: [${pt.danger}]`, pos.x + 12, pos.y - 12);
+
+            ctx.strokeStyle = "rgba(236, 72, 153, 0.65)";
+            ctx.lineWidth = 1.0;
+            ctx.beginPath();
+            ctx.moveTo(pos.x, pos.y);
+            ctx.lineTo(pos.x + 10, pos.y - 10);
+            ctx.stroke();
+          }
         } catch (e) {}
       });
     }
@@ -1404,7 +1522,7 @@ export default function MapContainer({
     const tick = () => {
       if (activeLayer === "Wind") {
         windParticles.current.forEach(p => {
-          const latDelta = p.speed * 0.00008;
+          const latDelta = p.speed * 0.00008 * animationSpeed;
           const rad = (p.angle * Math.PI) / 180;
 
           p.lat += Math.sin(rad) * latDelta;
@@ -1426,7 +1544,7 @@ export default function MapContainer({
 
     frameId = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frameId);
-  }, [activeLayer, statesData, fireEvents, isMeasuring, measurePoints]);
+  }, [activeLayer, statesData, fireEvents, isMeasuring, measurePoints, animationSpeed, layerOpacity]);
 
   // Map initialization & mounting
   useEffect(() => {
@@ -1457,6 +1575,7 @@ export default function MapContainer({
       }
     );
     satelliteLayer.addTo(map);
+    baseMapLayerRef.current = satelliteLayer;
 
     // 2. High-Contrast Reference Cities & Places Labels (Esri Places Layer)
     const labelLayer = L.tileLayer(
@@ -1469,6 +1588,7 @@ export default function MapContainer({
       }
     );
     labelLayer.addTo(map);
+    labelsLayerRef.current = labelLayer;
 
     // Dynamic sizing of overlay canvas
     const fitCanvas = () => {
@@ -1512,6 +1632,42 @@ export default function MapContainer({
       observer.disconnect();
     };
   }, [isMeasuring]);
+
+  // Sync baseMap state with Leaflet layers
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    let url = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
+    let showLabels = true;
+
+    if (baseMap === "Satellite") {
+      url = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
+      showLabels = false;
+    } else if (baseMap === "Terrain") {
+      url = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}";
+      showLabels = true;
+    } else if (baseMap === "Hybrid") {
+      url = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
+      showLabels = true;
+    }
+
+    if (baseMapLayerRef.current) {
+      baseMapLayerRef.current.setUrl(url);
+    }
+
+    if (labelsLayerRef.current) {
+      if (showLabels) {
+        if (!map.hasLayer(labelsLayerRef.current)) {
+          labelsLayerRef.current.addTo(map);
+        }
+      } else {
+        if (map.hasLayer(labelsLayerRef.current)) {
+          map.removeLayer(labelsLayerRef.current);
+        }
+      }
+    }
+  }, [baseMap]);
 
   // Sync GeoJSON boundaries with state details & highlights
   useEffect(() => {
@@ -1852,47 +2008,406 @@ export default function MapContainer({
       </div>
 
       {/* 4. FLOATING HUD: RIGHT SATELLITE SENSOR / LAYER CONTROLS */}
-      <div className="absolute top-20 right-4 z-[500] w-64 max-h-[82%] overflow-y-auto hidden md:block">
-        <div className="bg-[#040D1A]/90 border border-slate-800/80 rounded-xl p-4 shadow-2xl backdrop-blur-md space-y-3.5">
-          <div className="flex items-center gap-1.5 border-b border-slate-800/50 pb-2">
-            <Layers className="w-4 h-4 text-sky-blue" />
-            <span className="text-xs font-mono font-bold text-white uppercase tracking-wider">Atmospheric Sensors</span>
-          </div>
+      {(() => {
+        const categories = [
+          {
+            name: "🗺 Base Maps",
+            type: "basemaps",
+            items: [
+              { id: "Satellite", name: "Satellite Map", icon: Globe, color: "text-emerald-500", source: "Esri World Imagery" },
+              { id: "Terrain", name: "Terrain Map", icon: Compass, color: "text-amber-500", source: "Esri World Topo" },
+              { id: "Hybrid", name: "Hybrid Map", icon: Globe, color: "text-sky-400", source: "Esri Satellite + Labels" }
+            ]
+          },
+          {
+            name: "🌫 Air Quality",
+            type: "airquality",
+            items: [
+              { id: "AQI", name: "AQI Heatmap", icon: Gauge, color: "text-orange-400", source: "Sentinel-5P TROPOMI" },
+              { id: "PM2.5", name: "PM2.5 Concentration", icon: Activity, color: "text-rose-400", source: "CAMS Weather Grid", hasTimeline: true },
+              { id: "NO2", name: "NO₂ Column Density", icon: Sparkles, color: "text-cyan-400", source: "Aura OMI / Sentinel-5P" },
+              { id: "SO2", name: "SO₂ Plume Map", icon: Sparkles, color: "text-yellow-400", source: "NASA Aura OMI" },
+              { id: "CO", name: "CO Concentration", icon: Sparkles, color: "text-red-400", source: "GEMS Geostationary" },
+              { id: "O3", name: "O₃ Ozone Layer", icon: Sparkles, color: "text-violet-400", source: "Sentinel-5P Tracker" },
+              { id: "HCHO", name: "HCHO Formaldehyde", icon: Sparkles, color: "text-pink-400", source: "Sentinel-5P HCHO Column" }
+            ]
+          },
+          {
+            name: "🔥 Fire & Smoke",
+            type: "firesmoke",
+            items: [
+              { id: "Fires", name: "Thermal Fires (FIRMS)", icon: Flame, color: "text-amber-500 animate-pulse", source: "NASA FIRMS (VIIRS/MODIS)" },
+              { id: "Smoke", name: "Smoke Plumes", icon: Cloud, color: "text-slate-400 animate-pulse", source: "GFS Dispersion Model", hasSpeed: true }
+            ]
+          },
+          {
+            name: "🌦 Weather Sensors",
+            type: "weather",
+            items: [
+              { id: "Wind", name: "Wind Flow Particles", icon: Wind, color: "text-sky-400", source: "NCEP GFS Model", hasSpeed: true },
+              { id: "Temp", name: "Temperature Raster", icon: Thermometer, color: "text-orange-500", source: "INSAT-3D Meteorological" },
+              { id: "Rain", name: "Precipitation Radar", icon: CloudRain, color: "text-blue-400", source: "IMD Doppler Network", hasTimeline: true, hasSpeed: true },
+              { id: "Humidity", name: "Humidity Index", icon: Droplets, color: "text-teal-400", source: "INSAT-3D Sounder Profile" },
+              { id: "Pressure", name: "Pressure Isobars", icon: Compass, color: "text-indigo-400", source: "IMD Barometric Network" },
+              { id: "Clouds", name: "Satellite Clouds", icon: Cloud, color: "text-slate-300 animate-pulse", source: "INSAT-3D Infrared", hasTimeline: true },
+              { id: "AirMass", name: "Air Mass Trajectory", icon: Compass, color: "text-emerald-400", source: "NOAA HYSPLIT Models" }
+            ]
+          },
+          {
+            name: "🤖 AI Products",
+            type: "aiproducts",
+            items: [
+              { id: "Forecast", name: "Timeline Forecast", icon: Clock, color: "text-purple-400", source: "NCMRWF Unified Model", hasTimeline: true, hasSpeed: true },
+              { id: "HCHOPrediction", name: "AI HCHO Predictions", icon: Sparkles, color: "text-pink-500 animate-pulse", source: "NRSC AI Diffusion Model", hasSpeed: true }
+            ]
+          }
+        ];
 
-          <div className="flex flex-col gap-1.5">
-            {layersList.map((layer) => {
-              const Icon = layer.icon;
-              const isSelected = activeLayer === layer.id;
-              return (
-                <button
-                  key={layer.id}
-                  onClick={() => {
-                    setActiveLayer(layer.id);
-                    if (layer.id === "Wind") {
-                      // refresh wind particle coordinates
-                      windParticles.current.forEach(p => {
-                        p.lat = 8 + Math.random() * 30;
-                        p.lng = 68 + Math.random() * 30;
-                      });
-                    }
-                  }}
-                  className={`w-full flex items-center justify-between text-left px-3 py-2 text-[11px] rounded-lg border transition-all duration-200 ${
-                    isSelected
-                      ? "bg-slate-900 border-sky-500/40 text-white shadow-lg shadow-sky-500/5"
-                      : "bg-slate-950/40 border-slate-900 text-slate-400 hover:text-white hover:bg-slate-800/30"
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <Icon className={`w-3.5 h-3.5 ${layer.color}`} />
-                    <span className="font-medium">{layer.name}</span>
-                  </div>
-                  {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse" />}
-                </button>
-              );
-            })}
+        return (
+          <div className="absolute top-20 right-4 z-[500] w-72 max-h-[82%] overflow-y-auto hidden md:block select-none">
+            <div className="bg-[#040D1A]/95 border border-slate-800/90 rounded-2xl p-4 shadow-2xl backdrop-blur-md space-y-4">
+              <div className="flex items-center gap-1.5 border-b border-slate-800/50 pb-2.5">
+                <Layers className="w-4 h-4 text-sky-blue" />
+                <span className="text-xs font-mono font-bold text-white uppercase tracking-wider">Atmospheric GIS Layers</span>
+              </div>
+
+              <div className="space-y-3.5">
+                {categories.map((cat) => {
+                  const isCatExpanded = expandedCategory === cat.name;
+                  return (
+                    <div key={cat.name} className="space-y-1.5 border-b border-slate-800/20 pb-3 last:border-0 last:pb-0">
+                      <button
+                        onClick={() => setExpandedCategory(isCatExpanded ? null : cat.name)}
+                        className="w-full flex items-center justify-between text-left py-1 text-slate-300 hover:text-white font-mono text-[10px] font-bold uppercase tracking-wide transition-colors"
+                      >
+                        <span>{cat.name}</span>
+                        <span className="text-[8px] text-slate-500">{isCatExpanded ? "▲" : "▼"}</span>
+                      </button>
+
+                      {isCatExpanded && (
+                        <div className="flex flex-col gap-1.5 pl-1.5 pt-1">
+                          {cat.items.map((layer) => {
+                            const Icon = layer.icon;
+                            const isSelected = cat.type === "basemaps"
+                              ? baseMap === layer.id
+                              : activeLayer === layer.id;
+
+                            return (
+                              <div
+                                key={layer.id}
+                                className={`rounded-xl border transition-all duration-200 overflow-hidden ${
+                                  isSelected
+                                    ? "bg-slate-900/90 border-sky-500/30 shadow-lg shadow-sky-500/5"
+                                    : "bg-slate-950/20 border-slate-900/60 hover:border-slate-800"
+                                }`}
+                              >
+                                <button
+                                  onClick={() => {
+                                    if (cat.type === "basemaps") {
+                                      setBaseMap(layer.id as any);
+                                    } else {
+                                      setActiveLayer(layer.id);
+                                      if (layer.id === "Wind") {
+                                        windParticles.current.forEach(p => {
+                                          p.lat = 8 + Math.random() * 30;
+                                          p.lng = 68 + Math.random() * 30;
+                                        });
+                                      }
+                                    }
+                                  }}
+                                  className={`w-full flex items-center justify-between text-left px-3 py-2.5 text-[11px] font-medium transition-colors ${
+                                    isSelected ? "text-white" : "text-slate-400 hover:text-slate-200"
+                                  }`}
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <Icon className={`w-3.5 h-3.5 ${layer.color}`} />
+                                    <span>{layer.name}</span>
+                                  </div>
+                                  {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse" />}
+                                </button>
+
+                                {/* Collapsible details & settings dropdown */}
+                                {isSelected && (
+                                  <div className="px-3 pb-3 pt-0.5 border-t border-slate-800/40 bg-[#02070f]/60 space-y-2.5">
+                                    {/* Opacity slider */}
+                                    {cat.type !== "basemaps" && (
+                                      <div className="space-y-1">
+                                        <div className="flex items-center justify-between text-[9px] font-mono text-slate-500">
+                                          <span>OPACITY</span>
+                                          <span className="text-slate-300 font-bold">
+                                            {layerOpacity[layer.id] !== undefined ? layerOpacity[layer.id] : 60}%
+                                          </span>
+                                        </div>
+                                        <input
+                                          type="range"
+                                          min="10"
+                                          max="100"
+                                          value={layerOpacity[layer.id] !== undefined ? layerOpacity[layer.id] : 60}
+                                          onChange={(e) => {
+                                            const newVal = parseInt(e.target.value, 10);
+                                            setLayerOpacity(prev => ({
+                                              ...prev,
+                                              [layer.id]: newVal
+                                            }));
+                                          }}
+                                          className="w-full h-1 bg-slate-950 rounded-lg appearance-none cursor-pointer accent-sky-500"
+                                        />
+                                      </div>
+                                    )}
+
+                                    {/* Animation speed slider */}
+                                    {layer.hasSpeed && (
+                                      <div className="space-y-1">
+                                        <div className="flex items-center justify-between text-[9px] font-mono text-slate-500">
+                                          <span>ANIMATION SPEED</span>
+                                          <span className="text-slate-300 font-bold">{animationSpeed.toFixed(1)}x</span>
+                                        </div>
+                                        <input
+                                          type="range"
+                                          min="0.5"
+                                          max="3.0"
+                                          step="0.1"
+                                          value={animationSpeed}
+                                          onChange={(e) => {
+                                            setAnimationSpeed(parseFloat(e.target.value));
+                                          }}
+                                          className="w-full h-1 bg-slate-950 rounded-lg appearance-none cursor-pointer accent-sky-500"
+                                        />
+                                      </div>
+                                    )}
+
+                                    {/* Compact inline Timeline/Time Slider */}
+                                    {layer.hasTimeline && (
+                                      <div className="space-y-1.5 border-t border-b border-slate-800/40 py-2">
+                                        <div className="flex items-center justify-between text-[9px] font-mono text-slate-500">
+                                          <span>TIME SLIDER</span>
+                                          <span className="text-sky-400 font-bold">
+                                            {["+0h", "+24h", "+48h", "+72h"][timelineIndex]}
+                                          </span>
+                                        </div>
+                                        <div className="flex items-center gap-1.5 justify-between">
+                                          <button
+                                            onClick={() => setTimelineIsPlaying(!timelineIsPlaying)}
+                                            className="px-2 py-1 bg-slate-950 border border-slate-800/80 rounded hover:bg-slate-900 text-sky-400 font-bold text-[8px] tracking-wide"
+                                          >
+                                            {timelineIsPlaying ? "⏸ PAUSE" : "▶ PLAY"}
+                                          </button>
+                                          <div className="flex items-center gap-0.5 flex-1 justify-end">
+                                            {[0, 1, 2, 3].map((step) => (
+                                              <button
+                                                key={step}
+                                                onClick={() => {
+                                                  setTimelineIndex(step);
+                                                  setTimelineIsPlaying(false);
+                                                }}
+                                                className={`px-1.5 py-0.5 rounded text-[8px] font-mono border transition-all ${
+                                                  timelineIndex === step
+                                                    ? "bg-sky-500/20 text-sky-300 border-sky-500/40 font-bold"
+                                                    : "bg-slate-950 border-slate-900 text-slate-500 hover:text-slate-300"
+                                                }`}
+                                              >
+                                                {["Now", "+24", "+48", "+72"][step]}
+                                              </button>
+                                            ))}
+                                          </div>
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    {/* Render custom Legend gradient bar inside dropdown */}
+                                    {layer.id === "AQI" && (
+                                      <div className="space-y-1 pt-1">
+                                        <span className="text-[8px] font-mono text-slate-500 block uppercase">LEGEND (AQI)</span>
+                                        <div className="h-1.5 w-full rounded-full bg-gradient-to-r from-emerald-500 via-yellow-400 via-orange-500 via-rose-500 to-purple-600 border border-slate-950" />
+                                        <div className="flex justify-between text-[8px] text-slate-500 font-mono">
+                                          <span>0 (Good)</span>
+                                          <span>300+ (Hazardous)</span>
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    {layer.id === "PM2.5" && (
+                                      <div className="space-y-1 pt-1">
+                                        <span className="text-[8px] font-mono text-slate-500 block uppercase">LEGEND (PM2.5)</span>
+                                        <div className="h-1.5 w-full rounded-full bg-gradient-to-r from-emerald-400 via-yellow-400 via-orange-400 via-rose-500 to-purple-500 border border-slate-950" />
+                                        <div className="flex justify-between text-[8px] text-slate-500 font-mono">
+                                          <span>0 µg/m³</span>
+                                          <span>100+ µg</span>
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    {layer.id === "NO2" && (
+                                      <div className="space-y-1 pt-1">
+                                        <span className="text-[8px] font-mono text-slate-500 block uppercase">LEGEND (NO₂)</span>
+                                        <div className="h-1.5 w-full rounded-full bg-gradient-to-r from-cyan-500 via-teal-400 via-yellow-400 to-red-500 border border-slate-950" />
+                                        <div className="flex justify-between text-[8px] text-slate-500 font-mono">
+                                          <span>0.0 DU</span>
+                                          <span>0.60+ DU</span>
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    {layer.id === "SO2" && (
+                                      <div className="space-y-1 pt-1">
+                                        <span className="text-[8px] font-mono text-slate-500 block uppercase">LEGEND (SO₂)</span>
+                                        <div className="h-1.5 w-full rounded-full bg-gradient-to-r from-yellow-500/20 via-yellow-400 via-orange-500 to-red-600 border border-slate-950" />
+                                        <div className="flex justify-between text-[8px] text-slate-500 font-mono">
+                                          <span>Clean</span>
+                                          <span>12.0+ DU</span>
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    {layer.id === "CO" && (
+                                      <div className="space-y-1 pt-1">
+                                        <span className="text-[8px] font-mono text-slate-500 block uppercase">LEGEND (CO)</span>
+                                        <div className="h-1.5 w-full rounded-full bg-gradient-to-r from-red-500/10 via-orange-400 via-red-500 to-red-700 border border-slate-950" />
+                                        <div className="flex justify-between text-[8px] text-slate-500 font-mono">
+                                          <span>Calm</span>
+                                          <span>450+ ppb</span>
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    {layer.id === "O3" && (
+                                      <div className="space-y-1 pt-1">
+                                        <span className="text-[8px] font-mono text-slate-500 block uppercase">LEGEND (O₃)</span>
+                                        <div className="h-1.5 w-full rounded-full bg-gradient-to-r from-indigo-500 via-blue-500 via-cyan-400 via-emerald-400 to-yellow-300 border border-slate-950" />
+                                        <div className="flex justify-between text-[8px] text-slate-500 font-mono">
+                                          <span>220 DU</span>
+                                          <span>420 DU</span>
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    {layer.id === "HCHO" && (
+                                      <div className="space-y-1 pt-1">
+                                        <span className="text-[8px] font-mono text-slate-500 block uppercase">LEGEND (HCHO)</span>
+                                        <div className="h-1.5 w-full rounded-full bg-gradient-to-r from-pink-500/10 via-pink-400 via-orange-400 to-yellow-400 border border-slate-950" />
+                                        <div className="flex justify-between text-[8px] text-slate-500 font-mono">
+                                          <span>Baseline</span>
+                                          <span>Crop Fires</span>
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    {layer.id === "Temp" && (
+                                      <div className="space-y-1 pt-1">
+                                        <span className="text-[8px] font-mono text-slate-500 block uppercase">LEGEND (Temperature)</span>
+                                        <div className="h-1.5 w-full rounded-full bg-gradient-to-r from-blue-500 via-green-400 via-yellow-400 via-orange-500 to-purple-600 border border-slate-950" />
+                                        <div className="flex justify-between text-[8px] text-slate-500 font-mono">
+                                          <span>-15°C (Himalaya)</span>
+                                          <span>45°C (Desert)</span>
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    {layer.id === "Rain" && (
+                                      <div className="space-y-1 pt-1">
+                                        <span className="text-[8px] font-mono text-slate-500 block uppercase">LEGEND (Rain)</span>
+                                        <div className="h-1.5 w-full rounded-full bg-gradient-to-r from-green-500 via-yellow-400 via-orange-500 to-rose-600 border border-slate-950" />
+                                        <div className="flex justify-between text-[8px] text-slate-500 font-mono">
+                                          <span>0.1 mm/h</span>
+                                          <span>30+ mm/h</span>
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    {layer.id === "Humidity" && (
+                                      <div className="space-y-1 pt-1">
+                                        <span className="text-[8px] font-mono text-slate-500 block uppercase">LEGEND (Humidity)</span>
+                                        <div className="h-1.5 w-full rounded-full bg-gradient-to-r from-yellow-600 via-emerald-400 via-blue-500 to-blue-800 border border-slate-950" />
+                                        <div className="flex justify-between text-[8px] text-slate-500 font-mono">
+                                          <span>Dry (0%)</span>
+                                          <span>Wet (100%)</span>
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    {layer.id === "Pressure" && (
+                                      <div className="space-y-1 pt-1">
+                                        <span className="text-[8px] font-mono text-slate-500 block uppercase">LEGEND (Pressure)</span>
+                                        <div className="h-1.5 w-full rounded-full bg-gradient-to-r from-rose-500 via-slate-600 via-slate-400 to-blue-500 border border-slate-950" />
+                                        <div className="flex justify-between text-[8px] text-slate-500 font-mono">
+                                          <span>996 hPa (L)</span>
+                                          <span>1020 hPa (H)</span>
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    {layer.id === "Clouds" && (
+                                      <div className="space-y-1 pt-1">
+                                        <span className="text-[8px] font-mono text-slate-500 block uppercase">LEGEND (Clouds)</span>
+                                        <div className="h-1.5 w-full rounded-full bg-gradient-to-r from-slate-950 via-slate-700 via-slate-400 to-white border border-slate-950" />
+                                        <div className="flex justify-between text-[8px] text-slate-500 font-mono">
+                                          <span>Clear (0%)</span>
+                                          <span>Overcast (100%)</span>
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    {layer.id === "HCHOPrediction" && (
+                                      <div className="space-y-1 pt-1">
+                                        <span className="text-[8px] font-mono text-slate-500 block uppercase">LEGEND (AI HCHO Prediction)</span>
+                                        <div className="h-1.5 w-full rounded-full bg-gradient-to-r from-pink-500 via-purple-500 to-pink-300 border border-slate-950" />
+                                        <div className="flex justify-between text-[8px] text-slate-500 font-mono">
+                                          <span>Baseline</span>
+                                          <span>Extreme</span>
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    {/* Specific active hot-spot selector inside Fire layer */}
+                                    {layer.id === "Fires" && (
+                                      <div className="space-y-1.5 mt-1 font-mono text-[9px] border-t border-slate-800/40 pt-2.5">
+                                        <label className="text-slate-400 block font-bold">SELECT ACTIVE FIRE:</label>
+                                        <select 
+                                          className="bg-slate-950 border border-slate-800 text-slate-200 p-1 rounded w-full outline-none text-[9px]"
+                                          onChange={(e) => {
+                                            const fire = fireEvents.find(f => f.id === e.target.value);
+                                            if (fire) {
+                                              setSelectedFire(fire);
+                                              mapRef.current?.flyTo([fire.lat, fire.lng], 8);
+                                            }
+                                          }}
+                                          value={selectedFire?.id || ""}
+                                        >
+                                          <option value="">-- Choose Hotspot --</option>
+                                          {fireEvents.map(f => (
+                                            <option key={f.id} value={f.id}>{f.district}, {f.state}</option>
+                                          ))}
+                                        </select>
+                                        {selectedFire && (
+                                          <div className="bg-orange-950/20 border border-orange-500/20 p-2 rounded text-orange-300 leading-normal mt-1.5 space-y-0.5 text-[8.5px]">
+                                            <div><strong>FRP:</strong> {selectedFire.frp} MW</div>
+                                            <div><strong>Area:</strong> {selectedFire.burnArea} ha</div>
+                                            <div><strong>Conf:</strong> {selectedFire.confidence}%</div>
+                                            <div><strong>Sensor:</strong> {selectedFire.sensor}</div>
+                                          </div>
+                                        )}
+                                      </div>
+                                    )}
+
+                                    {/* Source Attribution */}
+                                    <div className="text-[8.5px] font-mono text-slate-500 border-t border-slate-800/40 pt-1.5">
+                                      Source: <span className="text-slate-400">{layer.source}</span>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
+        );
+      })()}
 
       {/* 5. FLOATING HUD: STATE DETAIL PREVIEW ON HOVER */}
       {hoveredState && (
@@ -1935,6 +2450,7 @@ export default function MapContainer({
       )}
 
       {/* 8. HIGH-PERFORMANCE METEOROLOGICAL GIS LEGEND & TIMELINE HUD (Bottom Center) */}
+      {false && (
       <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-[500] w-full max-w-xl px-4 pointer-events-auto">
         <div className="bg-[#040D1A]/95 border border-slate-800/90 rounded-2xl p-4 shadow-2xl backdrop-blur-md space-y-3 text-xs">
           
@@ -2242,6 +2758,7 @@ export default function MapContainer({
 
         </div>
       </div>
+      )}
 
       {/* 6. COORD TRACKER STATUS BAR (Bottom Right) */}
       <div className="absolute bottom-4 right-4 z-[500] pointer-events-auto flex items-center gap-4 bg-[#040D1A]/90 border border-slate-800/80 px-4 py-2 rounded-xl shadow-2xl backdrop-blur-md">

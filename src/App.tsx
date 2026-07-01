@@ -6,6 +6,7 @@ import { initialStatesData, mockFireEvents, initialAlerts } from "./data";
 import Sidebar from "./components/Sidebar";
 import Navbar from "./components/Navbar";
 import MapContainer from "./components/MapContainer";
+import DashboardOverview from "./components/DashboardOverview";
 import StateDetailsPanel from "./components/StateDetailsPanel";
 import HotspotsPanel from "./components/HotspotsPanel";
 import FireDetectionPanel from "./components/FireDetectionPanel";
@@ -22,7 +23,8 @@ import {
   Flame, 
   ShieldAlert, 
   Gauge, 
-  Compass
+  Compass,
+  Bell
 } from "lucide-react";
 
 export default function App() {
@@ -61,7 +63,6 @@ export default function App() {
             setIsSidebarOpen(false);
           }
         }} 
-        satelliteStatus={satelliteStatus}
         isOpen={isSidebarOpen}
         onClose={() => setIsSidebarOpen(false)}
       />
@@ -94,7 +95,31 @@ export default function App() {
         {/* 3. Conditional Page Render Engine */}
         <div className="flex-1 flex overflow-hidden relative bg-[#030914]">
           
-          {(currentPage === Page.Dashboard || currentPage === Page.IndiaMap) && (
+          {currentPage === Page.Dashboard && (
+            <div className="flex-1 flex overflow-hidden relative">
+              <div className="flex-1 relative h-full overflow-hidden">
+                <MapContainer 
+                  statesData={statesData}
+                  fireEvents={mockFireEvents}
+                  selectedState={selectedState}
+                  onSelectState={(state) => setSelectedState(state)}
+                  activeLayer="AQI"
+                  selectedSatellite={selectedSatellite}
+                />
+              </div>
+              <DashboardOverview 
+                onSelectCity={(cityName) => {
+                  // find corresponding state data and select it
+                  const stateFound = statesData.find(s => cityName.toLowerCase().includes(s.name.toLowerCase()));
+                  if (stateFound) {
+                    setSelectedState(stateFound);
+                  }
+                }}
+              />
+            </div>
+          )}
+
+          {currentPage === Page.IndiaMap && (
             <div className="flex-1 relative w-full h-full overflow-hidden">
               <MapContainer 
                 statesData={statesData}
@@ -129,6 +154,58 @@ export default function App() {
 
           {currentPage === Page.Reports && (
             <ReportsPanel />
+          )}
+
+          {currentPage === Page.Alerts && (
+            <div className="flex-1 overflow-y-auto p-6 bg-[#030914] space-y-6">
+              {/* Header */}
+              <div className="flex flex-col gap-1 border-b border-slate-800/60 pb-4">
+                <h1 className="text-xl font-bold font-sans text-white flex items-center gap-2.5">
+                  <Bell className="w-5 h-5 text-orange-500 animate-pulse" />
+                  National Air Quality & Thermal Hazard Alerts
+                </h1>
+                <p className="text-xs text-slate-400">
+                  Real-time ISRO NRSC telemetry and multi-spectral satellite hazard notifications.
+                </p>
+              </div>
+
+              {/* Alerts List Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {alerts.map((alert) => {
+                  const levelColors = {
+                    CRITICAL: "border-red-500/30 bg-red-950/20 text-red-200",
+                    WARNING: "border-amber-500/30 bg-amber-950/20 text-amber-200",
+                    INFO: "border-sky-500/30 bg-sky-950/20 text-sky-200",
+                  };
+                  return (
+                    <div 
+                      key={alert.id}
+                      className={`p-5 border rounded-xl flex flex-col gap-3.5 transition-all hover:bg-slate-900/20 ${levelColors[alert.level] || "border-slate-800 bg-slate-950/40 text-slate-200"}`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-mono font-bold uppercase tracking-wider bg-black/40 px-2.5 py-1 rounded-md">
+                          {alert.level}
+                        </span>
+                        <span className="text-[10px] font-mono text-slate-400">{alert.time}</span>
+                      </div>
+                      <p className="text-xs leading-relaxed font-sans font-medium">{alert.message}</p>
+                      <button 
+                        onClick={() => setAlerts(prev => prev.filter(a => a.id !== alert.id))}
+                        className="self-start text-[11px] font-bold text-sky-400 hover:text-white transition-colors cursor-pointer"
+                      >
+                        Acknowledge & Clear
+                      </button>
+                    </div>
+                  );
+                })}
+                {alerts.length === 0 && (
+                  <div className="col-span-full text-center p-12 border border-dashed border-slate-800 rounded-2xl text-slate-500">
+                    <Bell className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                    <p className="text-sm">No active atmospheric alerts detected at this time.</p>
+                  </div>
+                )}
+              </div>
+            </div>
           )}
 
           {currentPage === Page.Settings && (
