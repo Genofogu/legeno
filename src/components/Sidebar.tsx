@@ -12,16 +12,19 @@ import {
   Orbit, 
   Activity, 
   Compass,
-  Radio
+  Radio,
+  X
 } from "lucide-react";
 
 interface SidebarProps {
   currentPage: Page;
   setCurrentPage: (page: Page) => void;
   satelliteStatus: { id: string; name: string; status: "NOMINAL" | "STANDBY" | "OFFLINE"; signal: number }[];
+  isOpen: boolean;
+  onClose: () => void;
 }
 
-export default function Sidebar({ currentPage, setCurrentPage, satelliteStatus }: SidebarProps) {
+export default function Sidebar({ currentPage, setCurrentPage, satelliteStatus, isOpen, onClose }: SidebarProps) {
   const menuItems = [
     { page: Page.Dashboard, label: "Mission Dashboard", icon: LayoutDashboard },
     { page: Page.IndiaMap, label: "India AQI Map", icon: Map },
@@ -35,24 +38,51 @@ export default function Sidebar({ currentPage, setCurrentPage, satelliteStatus }
   ];
 
   return (
-    <aside id="sidebar-panel" className="w-64 h-screen bg-[#040d1a] border-r border-slate-800 flex flex-col justify-between select-none shrink-0">
-      {/* Brand Header */}
-      <div>
-        <div className="p-5 border-b border-slate-800/80 bg-gradient-to-b from-[#071B36] to-[#040d1a]">
-          <div className="flex items-center gap-3">
-            <div className="relative flex items-center justify-center w-10 h-10 rounded-lg bg-gradient-to-tr from-isro-orange to-sky-blue overflow-hidden shadow-md shadow-isro-orange/10">
-              <Orbit className="w-5 h-5 text-white animate-spin" style={{ animationDuration: "25s" }} />
-              <div className="absolute inset-0 bg-black/10 hover:bg-transparent transition-colors" />
-            </div>
-            <div>
-              <div className="flex items-center gap-1.5">
-                <span className="font-display font-bold text-xl tracking-wider text-white">ASTRA</span>
-                <span className="font-display font-extrabold text-xl text-isro-orange">AQI</span>
+    <>
+      {/* Mobile Backdrop Overlay */}
+      {isOpen && (
+        <div 
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[990] lg:hidden transition-opacity duration-300"
+          onClick={onClose}
+        />
+      )}
+
+      <aside 
+        id="sidebar-panel" 
+        className={`fixed lg:relative inset-y-0 left-0 z-[1000] bg-[#040d1a] border-r border-slate-800 flex flex-col justify-between select-none shrink-0 transition-all duration-300 ease-in-out ${
+          isOpen 
+            ? "translate-x-0 w-64 opacity-100" 
+            : "-translate-x-full lg:translate-x-0 lg:w-0 lg:opacity-0 lg:pointer-events-none lg:border-r-0"
+        } ${isOpen ? "shadow-2xl shadow-black/80 lg:shadow-none" : ""}`}
+      >
+        {/* Brand Header */}
+        <div>
+          <div className="p-5 border-b border-slate-800/80 bg-gradient-to-b from-[#071B36] to-[#040d1a]">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="relative flex items-center justify-center w-10 h-10 rounded-lg bg-gradient-to-tr from-isro-orange to-sky-blue overflow-hidden shadow-md shadow-isro-orange/10">
+                  <Orbit className="w-5 h-5 text-white animate-spin" style={{ animationDuration: "25s" }} />
+                  <div className="absolute inset-0 bg-black/10 hover:bg-transparent transition-colors" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-display font-bold text-xl tracking-wider text-white">ASTRA</span>
+                    <span className="font-display font-extrabold text-xl text-isro-orange">AQI</span>
+                  </div>
+                  <p className="text-[9px] font-mono tracking-widest text-slate-400 uppercase">ISRO Hackathon '26</p>
+                </div>
               </div>
-              <p className="text-[9px] font-mono tracking-widest text-slate-400 uppercase">ISRO Hackathon '26</p>
+
+              {/* Close Sidebar Button on Mobile */}
+              <button 
+                onClick={onClose}
+                className="lg:hidden p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/60 transition-colors cursor-pointer"
+                title="Close menu"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
           </div>
-        </div>
 
         {/* Navigation links */}
         <nav className="p-4 space-y-1">
@@ -120,5 +150,6 @@ export default function Sidebar({ currentPage, setCurrentPage, satelliteStatus }
         </div>
       </div>
     </aside>
+    </>
   );
 }

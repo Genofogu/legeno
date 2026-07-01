@@ -8,7 +8,9 @@ import {
   Compass, 
   Database,
   Satellite,
-  Volume2
+  Volume2,
+  Menu,
+  X
 } from "lucide-react";
 
 interface Alert {
@@ -27,6 +29,8 @@ interface NavbarProps {
   setSelectedSatellite: (satId: string) => void;
   alerts: Alert[];
   onDismissAlert: (id: string) => void;
+  isSidebarOpen: boolean;
+  onToggleSidebar: () => void;
 }
 
 export default function Navbar({
@@ -36,7 +40,9 @@ export default function Navbar({
   selectedSatellite,
   setSelectedSatellite,
   alerts,
-  onDismissAlert
+  onDismissAlert,
+  isSidebarOpen,
+  onToggleSidebar
 }: NavbarProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [isAlertsOpen, setIsAlertsOpen] = useState(false);
@@ -57,20 +63,37 @@ export default function Navbar({
   return (
     <header className="h-16 border-b border-slate-800 bg-[#071B36]/80 backdrop-blur-md flex items-center justify-between px-6 shrink-0 relative z-40 select-none">
       
-      {/* Search Bar */}
-      <form onSubmit={handleSearchSubmit} className="flex items-center w-80 relative">
-        <input
-          type="text"
-          placeholder="Search Indian States or Cities..."
-          value={searchQuery}
-          onChange={(e) => {
-            setSearchQuery(e.target.value);
-            onSearch(e.target.value);
-          }}
-          className="w-full bg-[#040d1a]/80 border border-slate-800 rounded-lg py-1.5 pl-9 pr-4 text-xs text-white placeholder-slate-400 focus:outline-none focus:border-isro-orange transition-all font-sans"
-        />
-        <Search className="w-4 h-4 text-slate-400 absolute left-3" />
-      </form>
+      {/* Left side: Burger Menu + Search Bar */}
+      <div className="flex items-center gap-3">
+        {/* Burger Menu Button */}
+        <button
+          id="burger-menu-btn"
+          onClick={onToggleSidebar}
+          className="p-2 rounded-lg hover:bg-slate-800/60 text-slate-300 hover:text-white transition-colors cursor-pointer flex items-center justify-center shrink-0"
+          title={isSidebarOpen ? "Collapse navigation" : "Expand navigation"}
+        >
+          {isSidebarOpen ? (
+            <X className="w-5 h-5 text-isro-orange transition-transform duration-200" />
+          ) : (
+            <Menu className="w-5 h-5 text-slate-300 transition-transform duration-200" />
+          )}
+        </button>
+
+        {/* Search Bar */}
+        <form onSubmit={handleSearchSubmit} className="flex items-center w-80 relative">
+          <input
+            type="text"
+            placeholder="Search Indian States or Cities..."
+            value={searchQuery}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              onSearch(e.target.value);
+            }}
+            className="w-full bg-[#040d1a]/80 border border-slate-800 rounded-lg py-1.5 pl-9 pr-4 text-xs text-white placeholder-slate-400 focus:outline-none focus:border-isro-orange transition-all font-sans"
+          />
+          <Search className="w-4 h-4 text-slate-400 absolute left-3" />
+        </form>
+      </div>
 
       {/* Center Controls: Date, Satellite Selectors */}
       <div className="flex items-center gap-4">

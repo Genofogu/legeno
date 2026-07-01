@@ -27,6 +27,7 @@ import {
 
 export default function App() {
   const [currentPage, setCurrentPage] = useState<Page>(Page.Dashboard);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [selectedDate, setSelectedDate] = useState("2026-06-30");
   const [selectedSatellite, setSelectedSatellite] = useState("sentinel5p");
   const [selectedState, setSelectedState] = useState<StateData | null>(null);
@@ -55,8 +56,14 @@ export default function App() {
           setCurrentPage(page);
           // Auto close detail panel if switching pages to maintain neatness
           setSelectedState(null);
+          // Auto close sidebar after navigation on mobile viewports
+          if (window.innerWidth < 1024) {
+            setIsSidebarOpen(false);
+          }
         }} 
         satelliteStatus={satelliteStatus}
+        isOpen={isSidebarOpen}
+        onClose={() => setIsSidebarOpen(false)}
       />
 
       {/* Main Content Workspace Wrapper */}
@@ -80,6 +87,8 @@ export default function App() {
           onDismissAlert={(id) => {
             setAlerts(prev => prev.filter(a => a.id !== id));
           }}
+          isSidebarOpen={isSidebarOpen}
+          onToggleSidebar={() => setIsSidebarOpen(prev => !prev)}
         />
 
         {/* 3. Conditional Page Render Engine */}
