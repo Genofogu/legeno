@@ -222,7 +222,7 @@ export default function MapContainer({
   // Layer & view controls
   const [activeLayer, setActiveLayer] = useState<string>(initialActiveLayer || "AQI");
   const [showBoundaries, setShowBoundaries] = useState(true);
-  const [dayMode, setDayMode] = useState(false); // false: Cyber IR Mode (Default), true: Normal RGB Satellite
+  const [dayMode, setDayMode] = useState(true); // true: Normal RGB Satellite (Default), false: Soft Enhanced Satellite
   const [is3D, setIs3D] = useState(false); // Perspective Tilt Toggle
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isMeasuring, setIsMeasuring] = useState(false);
@@ -290,8 +290,8 @@ export default function MapContainer({
     // DRAW DYNAMIC HEATMAP METRICS (AQI, PM2.5, NO2, SO2, CO, O3, HCHO, Temp, Rain, Humidity)
     const interpolationLayers = ["AQI", "PM2.5", "NO2", "SO2", "CO", "O3", "HCHO", "Temp", "Rain", "Humidity"];
     if (interpolationLayers.includes(activeLayer)) {
-      ctx.globalAlpha = 0.65;
-      ctx.globalCompositeOperation = "screen"; // high-tech screen blending
+      ctx.globalAlpha = 0.42; // Soft 40-45% opacity for transparent, natural blend overlay (allows terrain visibility underneath)
+      ctx.globalCompositeOperation = "screen"; // natural overlay screen blending
 
       const points: { lat: number; lng: number; val: number }[] = [];
 
@@ -336,8 +336,27 @@ export default function MapContainer({
         try {
           const pos = map.latLngToContainerPoint(L.latLng(pt.lat, pt.lng));
           const zoom = map.getZoom();
-          const baseRadius = 140;
-          const radius = baseRadius * Math.pow(1.3, zoom - 5);
+          
+          // Localized hotspots: scale radius by pollution intensity so clean zones are tiny/invisible, 
+          // and only major polluted zones (like Delhi, Punjab, Mumbai, Kolkata) get a beautiful soft glow
+          let baseRadius = 190; // Reduced base blur radius by about 30% for cleaner local spots (Windy/NASA observatory look)
+          let scaleFactor = 1.0;
+
+          if (activeLayer === "AQI" || activeLayer === "PM2.5") {
+            if (pt.val > 250) {
+              scaleFactor = 1.0; // High pollution (Delhi NCR, Punjab, Haryana, Western UP, etc.)
+            } else if (pt.val > 150) {
+              scaleFactor = 0.72; // Moderate pollution (Kolkata, Mumbai, Ahmedabad)
+            } else if (pt.val > 100) {
+              scaleFactor = 0.52; // Mild pollution (Hyderabad)
+            } else {
+              scaleFactor = 0.18; // Clean regions (Sikkim, Kerala) - shrunk massively to stay highly localized and subtle
+            }
+          } else {
+            scaleFactor = Math.min(1.0, Math.max(0.25, pt.val / 150));
+          }
+
+          const radius = baseRadius * scaleFactor * Math.pow(1.22, zoom - 5);
 
           const grad = ctx.createRadialGradient(pos.x, pos.y, 0, pos.x, pos.y, radius);
 
@@ -345,36 +364,36 @@ export default function MapContainer({
 
           if (activeLayer === "AQI" || activeLayer === "PM2.5") {
             if (pt.val > 300) {
-              colors = ["rgba(244, 63, 94, 0.8)", "rgba(244, 63, 94, 0.4)", "rgba(249, 115, 22, 0.15)", "rgba(0, 0, 0, 0)"];
+              colors = ["rgba(244, 63, 94, 0.45)", "rgba(244, 63, 94, 0.18)", "rgba(249, 115, 22, 0.04)", "rgba(0, 0, 0, 0)"];
             } else if (pt.val > 200) {
-              colors = ["rgba(249, 115, 22, 0.75)", "rgba(245, 158, 11, 0.35)", "rgba(16, 185, 129, 0.1)", "rgba(0, 0, 0, 0)"];
+              colors = ["rgba(249, 115, 22, 0.40)", "rgba(245, 158, 11, 0.15)", "rgba(16, 185, 129, 0.03)", "rgba(0, 0, 0, 0)"];
             } else if (pt.val > 100) {
-              colors = ["rgba(245, 158, 11, 0.7)", "rgba(16, 185, 129, 0.25)", "rgba(0, 0, 0, 0)"];
+              colors = ["rgba(245, 158, 11, 0.35)", "rgba(16, 185, 129, 0.06)", "rgba(0, 0, 0, 0)"];
             } else {
-              colors = ["rgba(16, 185, 129, 0.6)", "rgba(16, 185, 129, 0.2)", "rgba(0, 0, 0, 0)"];
+              colors = ["rgba(16, 185, 129, 0.15)", "rgba(16, 185, 129, 0.02)", "rgba(0, 0, 0, 0)"];
             }
           } else if (activeLayer === "NO2") {
-            colors = ["rgba(6, 182, 212, 0.85)", "rgba(6, 182, 212, 0.3)", "rgba(0, 0, 0, 0)"];
+            colors = ["rgba(6, 182, 212, 0.40)", "rgba(6, 182, 212, 0.10)", "rgba(0, 0, 0, 0)"];
           } else if (activeLayer === "SO2") {
-            colors = ["rgba(234, 179, 8, 0.85)", "rgba(234, 179, 8, 0.3)", "rgba(0, 0, 0, 0)"];
+            colors = ["rgba(234, 179, 8, 0.40)", "rgba(234, 179, 8, 0.10)", "rgba(0, 0, 0, 0)"];
           } else if (activeLayer === "CO") {
-            colors = ["rgba(239, 68, 68, 0.8)", "rgba(249, 115, 22, 0.3)", "rgba(0, 0, 0, 0)"];
+            colors = ["rgba(239, 68, 68, 0.40)", "rgba(249, 115, 22, 0.10)", "rgba(0, 0, 0, 0)"];
           } else if (activeLayer === "O3") {
-            colors = ["rgba(147, 51, 234, 0.8)", "rgba(236, 72, 153, 0.35)", "rgba(0, 0, 0, 0)"];
+            colors = ["rgba(147, 51, 234, 0.40)", "rgba(236, 72, 153, 0.10)", "rgba(0, 0, 0, 0)"];
           } else if (activeLayer === "HCHO") {
-            colors = ["rgba(236, 72, 153, 0.85)", "rgba(6, 182, 212, 0.3)", "rgba(0, 0, 0, 0)"];
+            colors = ["rgba(236, 72, 153, 0.40)", "rgba(6, 182, 212, 0.10)", "rgba(0, 0, 0, 0)"];
           } else if (activeLayer === "Temp") {
             if (pt.val > 35) {
-              colors = ["rgba(239, 68, 68, 0.8)", "rgba(249, 115, 22, 0.4)", "rgba(0, 0, 0, 0)"];
+              colors = ["rgba(239, 68, 68, 0.40)", "rgba(249, 115, 22, 0.15)", "rgba(0, 0, 0, 0)"];
             } else if (pt.val > 30) {
-              colors = ["rgba(245, 158, 11, 0.7)", "rgba(59, 130, 246, 0.2)", "rgba(0, 0, 0, 0)"];
+              colors = ["rgba(245, 158, 11, 0.35)", "rgba(59, 130, 246, 0.08)", "rgba(0, 0, 0, 0)"];
             } else {
-              colors = ["rgba(59, 130, 246, 0.75)", "rgba(147, 51, 234, 0.2)", "rgba(0, 0, 0, 0)"];
+              colors = ["rgba(59, 130, 246, 0.35)", "rgba(147, 51, 234, 0.08)", "rgba(0, 0, 0, 0)"];
             }
           } else if (activeLayer === "Rain") {
-            colors = ["rgba(59, 130, 246, 0.8)", "rgba(6, 182, 212, 0.35)", "rgba(0, 0, 0, 0)"];
+            colors = ["rgba(59, 130, 246, 0.40)", "rgba(6, 182, 212, 0.12)", "rgba(0, 0, 0, 0)"];
           } else if (activeLayer === "Humidity") {
-            colors = ["rgba(6, 182, 212, 0.8)", "rgba(29, 78, 216, 0.3)", "rgba(0, 0, 0, 0)"];
+            colors = ["rgba(6, 182, 212, 0.40)", "rgba(29, 78, 216, 0.10)", "rgba(0, 0, 0, 0)"];
           }
 
           if (colors.length >= 2) {
@@ -577,13 +596,18 @@ export default function MapContainer({
   useEffect(() => {
     if (!mapContainerRef.current) return;
 
-    // Instantiate native Leaflet Map centered over Nagpur, India's geometric hub
+    // Instantiate native Leaflet Map
     const map = L.map(mapContainerRef.current, {
-      center: [21.1458, 79.0882],
-      zoom: 5,
       zoomControl: false,
       attributionControl: false
     });
+
+    // Fit India boundaries perfectly so it occupies approximately 70-80% of the screen
+    const indiaBounds = L.latLngBounds(
+      [6.5, 67.5], // Southwest (Sri Lanka / Southern Ocean)
+      [36.0, 97.5] // Northeast (Himalayas / Arunachal Pradesh)
+    );
+    map.fitBounds(indiaBounds, { padding: [10, 10] });
 
     mapRef.current = map;
 
@@ -592,7 +616,8 @@ export default function MapContainer({
       "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
       {
         maxZoom: 18,
-        minZoom: 4
+        minZoom: 4,
+        className: "satellite-tiles"
       }
     );
     satelliteLayer.addTo(map);
@@ -603,7 +628,8 @@ export default function MapContainer({
       {
         maxZoom: 18,
         minZoom: 4,
-        opacity: 0.8
+        opacity: 0.95, // High opacity so country borders and labels are perfectly crisp and readable
+        className: "label-tiles"
       }
     );
     labelLayer.addTo(map);
@@ -671,10 +697,10 @@ export default function MapContainer({
         const isSelected = selectedState && selectedState.id === stateCode;
 
         return {
-          color: isSelected ? "#f97316" : "rgba(255, 255, 255, 0.45)",
-          weight: isSelected ? 2.5 : 0.85,
-          fillColor: isSelected ? "rgba(249, 115, 22, 0.12)" : "rgba(0, 0, 0, 0)",
-          fillOpacity: isSelected ? 0.12 : 0
+          color: isSelected ? "#FF6B00" : "rgba(255, 255, 255, 0.65)",
+          weight: isSelected ? 2.5 : 0.7,
+          fillColor: isSelected ? "rgba(255, 107, 0, 0.06)" : "rgba(0, 0, 0, 0)",
+          fillOpacity: isSelected ? 0.06 : 0
         };
       },
       onEachFeature: (feature, layer) => {
@@ -687,10 +713,10 @@ export default function MapContainer({
             if (stateMeta) setHoveredState(stateMeta);
             const path = e.target;
             path.setStyle({
-              color: selectedState?.id === stateCode ? "#f97316" : "#38bdf8",
-              weight: selectedState?.id === stateCode ? 2.5 : 1.5,
-              fillColor: selectedState?.id === stateCode ? "rgba(249, 115, 22, 0.15)" : "rgba(56, 189, 248, 0.08)",
-              fillOpacity: 0.08
+              color: selectedState?.id === stateCode ? "#FF6B00" : "rgba(255, 255, 255, 0.95)",
+              weight: selectedState?.id === stateCode ? 2.5 : 1.2,
+              fillColor: selectedState?.id === stateCode ? "rgba(255, 107, 0, 0.08)" : "rgba(255, 255, 255, 0.04)",
+              fillOpacity: 0.04
             });
           },
           mouseout: (e) => {
@@ -698,10 +724,10 @@ export default function MapContainer({
             const path = e.target;
             const isSelected = selectedState && selectedState.id === stateCode;
             path.setStyle({
-              color: isSelected ? "#f97316" : "rgba(255, 255, 255, 0.45)",
-              weight: isSelected ? 2.5 : 0.85,
-              fillColor: isSelected ? "rgba(249, 115, 22, 0.12)" : "rgba(0, 0, 0, 0)",
-              fillOpacity: isSelected ? 0.12 : 0
+              color: isSelected ? "#FF6B00" : "rgba(255, 255, 255, 0.65)",
+              weight: isSelected ? 2.5 : 0.7,
+              fillColor: isSelected ? "rgba(255, 107, 0, 0.06)" : "rgba(0, 0, 0, 0)",
+              fillOpacity: isSelected ? 0.06 : 0
             });
           },
           click: () => {
@@ -764,7 +790,10 @@ export default function MapContainer({
   const handleZoomIn = () => mapRef.current?.zoomIn();
   const handleZoomOut = () => mapRef.current?.zoomOut();
   const handleRecenter = () => {
-    mapRef.current?.flyTo([21.1458, 79.0882], 5);
+    if (mapRef.current) {
+      const indiaBounds = L.latLngBounds([6.5, 67.5], [36.0, 97.5]);
+      mapRef.current.flyToBounds(indiaBounds, { padding: [10, 10], duration: 1.5 });
+    }
   };
   const handleLocateUser = () => {
     if (navigator.geolocation) {
@@ -824,16 +853,20 @@ export default function MapContainer({
         />
       </div>
 
-      {/* CSS Filter injection to convert Esri Satellite imagery to a futuristic Dark Infrared Cyber Mode */}
+      {/* CSS Filter injection to enhance Esri Satellite imagery to bright realistic daytime styles */}
       <style>{`
-        .gis-ir-cyber-mode .leaflet-tile-container {
-          filter: brightness(0.42) contrast(1.15) saturate(0.9) hue-rotate(185deg) sepia(0.08) !important;
+        /* Target ONLY satellite tiles to preserve crisp/readable labels & borders */
+        .gis-day-mode .satellite-tiles {
+          filter: brightness(1.20) contrast(1.15) saturate(1.05) !important;
         }
-        .gis-day-mode .leaflet-tile-container {
+        .gis-ir-cyber-mode .satellite-tiles {
+          filter: brightness(1.10) contrast(1.08) saturate(1.02) !important;
+        }
+        .label-tiles {
           filter: none !important;
         }
         .leaflet-container {
-          background: #030914 !important;
+          background: #0a2540 !important; /* Deep sea-blue base background underneath tiles */
         }
       `}</style>
 
@@ -948,11 +981,11 @@ export default function MapContainer({
           <button 
             onClick={() => setDayMode(!dayMode)}
             className={`p-2 rounded-lg transition-all duration-200 ${
-              dayMode ? "text-emerald-400" : "text-cyan-400"
+              dayMode ? "text-emerald-400" : "text-sky-400"
             }`}
-            title="Toggle IR Cyber / RGB Satellite Mode"
+            title="Toggle Realistic Sat / Soft Terrain Map Styles"
           >
-            <span className="text-[10px] font-mono font-bold">{dayMode ? "RGB" : "IR"}</span>
+            <span className="text-[10px] font-mono font-bold">{dayMode ? "SAT" : "SOFT"}</span>
           </button>
 
           <button 
