@@ -27,7 +27,8 @@ import {
   Globe,
   Cloud,
   Calendar,
-  Clock
+  Clock,
+  ChevronDown
 } from "lucide-react";
 
 // Real geographic centroids of Indian States for GIS flight paths
@@ -1867,64 +1868,47 @@ export default function MapContainer({
         }
       `}</style>
 
-      {/* 2. FLOATING HUD: TOP SEARCH PANEL */}
-      <div className="absolute top-4 left-4 z-[500] w-72">
-        <div className="bg-[#040D1A]/90 border border-slate-800/80 rounded-xl shadow-2xl backdrop-blur-md overflow-hidden transition-all duration-300">
-          <div className="flex items-center gap-2 px-3 py-2 border-b border-slate-800/50">
-            <Search className="w-4 h-4 text-slate-400" />
-            <input 
-              type="text"
-              placeholder="Search Indian City or State..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onFocus={() => setSearchFocused(true)}
-              className="bg-transparent text-xs text-white placeholder-slate-500 border-none outline-none w-full"
-            />
-            {searchQuery && (
-              <button onClick={() => setSearchQuery("")} className="text-[10px] text-slate-500 hover:text-white">
-                Clear
-              </button>
-            )}
+      {/* 2. TOP-LEFT LAYER SELECTOR & SEARCH (matching mockup) */}
+      <div className="absolute top-4 left-4 z-[500] flex items-center gap-2 pointer-events-auto">
+        <div className="relative">
+          <select
+            value={activeLayer}
+            onChange={(e) => {
+              setActiveLayer(e.target.value);
+            }}
+            className="appearance-none bg-[#030a16]/95 border border-slate-800/90 text-slate-200 font-sans text-xs font-extrabold px-3 py-2 pr-8 rounded-lg shadow-2xl backdrop-blur-md outline-none cursor-pointer hover:bg-slate-900 transition-colors uppercase tracking-wider"
+          >
+            {layersList.map(layer => (
+              <option key={layer.id} value={layer.id} className="bg-[#030a16] text-slate-200">
+                {layer.id}
+              </option>
+            ))}
+          </select>
+          <div className="absolute right-2.5 top-2.5 pointer-events-none text-slate-400">
+            <ChevronDown className="w-3.5 h-3.5" />
           </div>
+        </div>
 
-          {searchFocused && (searchQuery || filteredLocations.length > 0) && (
-            <div className="max-h-56 overflow-y-auto bg-[#040D1A]/95 p-1 flex flex-col gap-0.5 border-t border-slate-800/50">
-              {filteredLocations.map((item, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => handleLocationSearch(item.coords, item.type, item.type === "state" ? item.id : undefined)}
-                  className="w-full text-left px-3 py-2 text-[11px] text-slate-300 hover:bg-slate-800/60 rounded-lg flex items-center justify-between transition-colors"
-                >
-                  <span className="font-medium text-white">{item.name}</span>
-                  <span className="text-[9px] font-mono text-slate-500 uppercase px-1.5 py-0.2 bg-slate-900 border border-slate-800 rounded">
-                    {item.type}
-                  </span>
-                </button>
-              ))}
-              {filteredLocations.length === 0 && (
-                <div className="text-center py-4 text-[10px] text-slate-500">
-                  No spatial points found
-                </div>
-              )}
-            </div>
-          )}
+        {/* Compact Search Input (Integrated beautifully) */}
+        <div className="bg-[#030a16]/95 border border-slate-800/90 rounded-lg shadow-2xl backdrop-blur-md overflow-hidden flex items-center gap-1.5 px-2.5 py-1.5 w-44">
+          <Search className="w-3.5 h-3.5 text-slate-400" />
+          <input 
+            type="text"
+            placeholder="Search city/state..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onFocus={() => setSearchFocused(true)}
+            className="bg-transparent text-[10px] text-white placeholder-slate-500 border-none outline-none w-full font-sans"
+          />
         </div>
       </div>
 
-      {/* 3. FLOATING HUD: LEFT NAVIGATION TOOLBAR */}
-      <div className="absolute top-4 right-4 md:right-auto md:left-4 md:top-20 z-[500] flex flex-col gap-2">
-        <div className="bg-[#040D1A]/90 border border-slate-800/80 rounded-xl p-1.5 shadow-2xl backdrop-blur-md flex flex-row md:flex-col gap-1.5">
-          <button 
-            onClick={handleRecenter}
-            className="p-2 hover:bg-slate-800/60 rounded-lg text-slate-300 hover:text-white transition-all duration-200"
-            title="Recenter Map North (India)"
-          >
-            <Compass className="w-4 h-4 text-sky-blue" />
-          </button>
-          
+      {/* 3. LEFT COMPACT VERTICAL NAVIGATION TOOLBAR (matching mockup) */}
+      <div className="absolute top-16 left-4 z-[500] pointer-events-auto flex flex-col gap-1.5">
+        <div className="bg-[#030a16]/95 border border-slate-800/90 rounded-lg p-1 shadow-2xl backdrop-blur-md flex flex-col gap-1 w-max">
           <button 
             onClick={handleZoomIn}
-            className="p-2 hover:bg-slate-800/60 rounded-lg text-slate-300 hover:text-white transition-all duration-200"
+            className="p-1.5 hover:bg-slate-800/60 rounded text-slate-300 hover:text-white transition-colors flex items-center justify-center"
             title="Zoom In"
           >
             <ZoomIn className="w-4 h-4" />
@@ -1932,43 +1916,49 @@ export default function MapContainer({
           
           <button 
             onClick={handleZoomOut}
-            className="p-2 hover:bg-slate-800/60 rounded-lg text-slate-300 hover:text-white transition-all duration-200"
+            className="p-1.5 hover:bg-slate-800/60 rounded text-slate-300 hover:text-white transition-colors flex items-center justify-center"
             title="Zoom Out"
           >
             <ZoomOut className="w-4 h-4" />
           </button>
-
-          <div className="w-px md:w-full h-auto md:h-px bg-slate-800/50" />
+          
+          <button 
+            onClick={handleRecenter}
+            className="p-1.5 hover:bg-slate-800/60 rounded text-slate-300 hover:text-white transition-colors flex items-center justify-center"
+            title="Recenter Map North"
+          >
+            <Compass className="w-4 h-4 text-sky-400" />
+          </button>
 
           <button 
             onClick={handleLocateUser}
-            className="p-2 hover:bg-slate-800/60 rounded-lg text-slate-300 hover:text-sky-400 transition-all duration-200"
+            className="p-1.5 hover:bg-slate-800/60 rounded text-slate-300 hover:text-white transition-colors flex items-center justify-center"
             title="Locate Me"
           >
             <MapPin className="w-4 h-4 text-emerald-400" />
           </button>
+
+          <div className="h-px bg-slate-800/60 my-0.5" />
 
           <button 
             onClick={() => {
               setIsMeasuring(!isMeasuring);
               setMeasurePoints([]);
             }}
-            className={`p-2 rounded-lg transition-all duration-200 ${
+            className={`p-1.5 rounded transition-all duration-200 flex items-center justify-center ${
               isMeasuring 
-                ? "bg-sky-500/20 text-sky-400 border border-sky-500/40" 
+                ? "bg-sky-500/20 text-sky-400 border border-sky-500/30" 
                 : "hover:bg-slate-800/60 text-slate-300 hover:text-white"
             }`}
-            title="Measure Geodesic Distance (Click 2 locations)"
+            title="Measure Distance"
           >
             <Ruler className="w-4 h-4" />
           </button>
 
           <button 
             onClick={() => setShowBoundaries(!showBoundaries)}
-            className={`p-2 rounded-lg transition-all duration-200 ${
-              showBoundaries 
-                ? "text-sky-400" 
-                : "text-slate-500 hover:text-white"
+            className={`p-1.5 rounded transition-colors flex items-center justify-center ${
+              showBoundaries ? "text-sky-400" : "text-slate-500 hover:text-white"
             }`}
             title="Toggle State Boundaries"
           >
@@ -1977,30 +1967,28 @@ export default function MapContainer({
 
           <button 
             onClick={() => setDayMode(!dayMode)}
-            className={`p-2 rounded-lg transition-all duration-200 ${
-              dayMode ? "text-emerald-400" : "text-sky-400"
-            }`}
-            title="Toggle Realistic Sat / Soft Terrain Map Styles"
+            className="p-1.5 hover:bg-slate-800/60 rounded text-slate-400 hover:text-white flex items-center justify-center"
+            title="Toggle Soft / Sat Map Style"
           >
-            <span className="text-[10px] font-mono font-bold">{dayMode ? "SAT" : "SOFT"}</span>
+            <span className="text-[9px] font-mono font-bold leading-none">{dayMode ? "SAT" : "SOFT"}</span>
           </button>
 
           <button 
             onClick={() => setIs3D(!is3D)}
-            className={`p-2 rounded-lg transition-all duration-200 ${
+            className={`p-1.5 rounded transition-all duration-200 flex items-center justify-center ${
               is3D 
-                ? "bg-orange-500/20 text-orange-400 border border-orange-500/40" 
+                ? "bg-orange-500/20 text-orange-400 border border-orange-500/30" 
                 : "hover:bg-slate-800/60 text-slate-300 hover:text-white"
             }`}
-            title="Toggle 3D Flight Tilt"
+            title="Toggle 3D View"
           >
-            <span className="text-[10px] font-mono font-bold">3D</span>
+            <span className="text-[9px] font-mono font-bold leading-none">3D</span>
           </button>
 
           <button 
             onClick={toggleFullscreen}
-            className="p-2 hover:bg-slate-800/60 rounded-lg text-slate-300 hover:text-white transition-all duration-200"
-            title="Fullscreen Map"
+            className="p-1.5 hover:bg-slate-800/60 rounded text-slate-300 hover:text-white transition-colors flex items-center justify-center"
+            title="Fullscreen"
           >
             <Maximize2 className="w-4 h-4" />
           </button>
@@ -2760,39 +2748,94 @@ export default function MapContainer({
       </div>
       )}
 
-      {/* 6. COORD TRACKER STATUS BAR (Bottom Right) */}
-      <div className="absolute bottom-4 right-4 z-[500] pointer-events-auto flex items-center gap-4 bg-[#040D1A]/90 border border-slate-800/80 px-4 py-2 rounded-xl shadow-2xl backdrop-blur-md">
-        <div className="flex items-center gap-1.5 font-mono text-[10px] text-slate-300">
-          <Compass className="w-3.5 h-3.5 text-sky-blue animate-spin-slow" />
-          <span>LAT: <strong className="text-white">{mouseCoords.lat.toFixed(4)}° N</strong></span>
-          <span className="text-slate-600">|</span>
-          <span>LON: <strong className="text-white">{mouseCoords.lon.toFixed(4)}° E</strong></span>
+      {/* DOUBLE SCALE INDICATOR & AQI LEGEND (Bottom Left - matching mockup) */}
+      <div className="absolute bottom-20 left-4 z-[500] pointer-events-none flex flex-col gap-4">
+        {/* Double scale ruler */}
+        <div className="text-[10px] font-mono text-slate-200">
+          <div className="relative h-8 w-28 border-l border-white/80">
+            {/* 500 km line */}
+            <div className="absolute top-0 left-0 w-full border-t border-white/80 flex justify-between">
+              <span className="pl-1.5 -mt-2 font-semibold">500 km</span>
+              <div className="h-1 border-r border-white/80"></div>
+            </div>
+            {/* 300 mi line */}
+            <div className="absolute bottom-0 left-0 w-20 border-t border-white/80 flex justify-between">
+              <span className="pl-1.5 -mt-2 font-semibold">300 mi</span>
+              <div className="h-1 border-r border-white/80"></div>
+            </div>
+          </div>
         </div>
 
+        {/* AQI Scale bar */}
+        <div className="bg-[#030a16]/95 border border-slate-800/90 rounded-xl p-3.5 shadow-2xl backdrop-blur-md w-72 pointer-events-auto">
+          <span className="text-[10px] font-sans font-bold text-slate-400 block mb-1.5 uppercase tracking-wider">AQI Scale</span>
+          <div className="h-2 w-full rounded-full bg-gradient-to-r from-emerald-500 via-yellow-400 via-orange-500 via-rose-500 via-purple-500 to-fuchsia-600 border border-slate-950" />
+          <div className="flex justify-between text-[9px] text-slate-400 font-mono mt-1">
+            <span>0</span>
+            <span>50</span>
+            <span>100</span>
+            <span>200</span>
+            <span>300</span>
+            <span>400</span>
+            <span>500</span>
+          </div>
+        </div>
+      </div>
+
+      {/* COORD TRACKER STATUS BAR (Bottom Right - matching mockup) */}
+      <div className="absolute bottom-4 right-4 z-[500] pointer-events-none flex flex-col items-end gap-1 bg-[#030a16]/95 border border-slate-800/90 px-3.5 py-2 rounded-lg shadow-2xl backdrop-blur-md text-[10px] font-mono text-slate-300">
+        <div>Lat: <strong className="text-white">{(mouseCoords.lat && mouseCoords.lat !== 0) ? mouseCoords.lat.toFixed(4) : "17.3850"}° N</strong></div>
+        <div>Lon: <strong className="text-white">{(mouseCoords.lon && mouseCoords.lon !== 0) ? mouseCoords.lon.toFixed(4) : "78.4867"}° E</strong></div>
         {isMeasuring && (
-          <div className="flex items-center gap-1.5 font-mono text-[10px] text-sky-400 animate-pulse border-l border-slate-800/80 pl-4">
-            <Ruler className="w-3 h-3 text-sky-400" />
-            <span>MEASURE ACTIVE: <strong className="text-white">{calculateGeodesicDistance()} km</strong></span>
+          <div className="text-[9.5px] text-sky-400 font-bold mt-1 animate-pulse flex items-center gap-1">
+            <Ruler className="w-3 h-3" />
+            <span>MEASURE: {calculateGeodesicDistance()} km</span>
           </div>
         )}
       </div>
 
-      {/* 7. QUICK MOBILE SENSOR TABS SWITCHER (Bottom Left) */}
-      <div className="absolute bottom-4 left-4 z-[500] md:hidden">
-        <div className="bg-[#040D1A]/90 border border-slate-800/80 rounded-xl p-1.5 flex gap-1 shadow-2xl backdrop-blur-md">
-          {layersList.slice(0, 4).map((layer) => (
-            <button
-              key={layer.id}
-              onClick={() => setActiveLayer(layer.id)}
-              className={`px-2.5 py-1 text-[9px] font-mono font-bold rounded transition-all ${
-                activeLayer === layer.id 
-                  ? "bg-sky-500/20 text-sky-400 border border-sky-500/30" 
-                  : "text-slate-400 hover:text-white"
-              }`}
-            >
-              {layer.id}
-            </button>
-          ))}
+      {/* QUICK SENSOR SWITCHER PANEL (Bottom Center - matching mockup) */}
+      <div className="absolute bottom-4 left-4 right-4 z-[500] flex justify-center pointer-events-none">
+        <div className="bg-[#030a16]/95 border border-slate-800/90 rounded-xl p-1 flex items-center gap-1 shadow-2xl backdrop-blur-md pointer-events-auto max-w-full overflow-x-auto no-scrollbar">
+          {[
+            { id: "AQI", name: "AQI", icon: Gauge },
+            { id: "PM2.5", name: "PM2.5", icon: Sparkles },
+            { id: "NO2", name: "NO₂", icon: Droplets },
+            { id: "SO2", name: "SO₂", icon: Droplets },
+            { id: "CO", name: "CO", icon: Wind },
+            { id: "O3", name: "O₃", icon: Globe },
+            { id: "HCHO", name: "HCHO", icon: Cloud },
+            { id: "Fires", name: "Fires", icon: Flame },
+            { id: "Wind", name: "Wind", icon: Wind },
+            { id: "Rain", name: "Rain", icon: CloudRain },
+            { id: "Temp", name: "Temp", icon: Thermometer },
+            { id: "Humidity", name: "Humidity", icon: Droplets }
+          ].map((item) => {
+            const Icon = item.icon;
+            const isSelected = activeLayer === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => {
+                  setActiveLayer(item.id);
+                  if (item.id === "Wind") {
+                    windParticles.current.forEach(p => {
+                      p.lat = 8 + Math.random() * 30;
+                      p.lng = 68 + Math.random() * 30;
+                    });
+                  }
+                }}
+                className={`flex flex-col items-center justify-center w-16 h-14 rounded-lg transition-all ${
+                  isSelected 
+                    ? "bg-sky-500/15 border border-sky-500/40 text-sky-400 shadow-[0_0_12px_rgba(14,165,233,0.15)] font-bold" 
+                    : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 border border-transparent"
+                }`}
+              >
+                <Icon className={`w-4 h-4 mb-1.5 ${isSelected ? "text-sky-400" : "text-slate-400"}`} />
+                <span className="text-[10px] tracking-wide font-sans font-medium">{item.name}</span>
+              </button>
+            );
+          })}
         </div>
       </div>
     </div>
